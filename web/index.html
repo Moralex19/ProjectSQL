@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>manGUI — Motor de Base de Datos SQL</title>
+    <meta name="description" content="manGUI: Un mini motor de base de datos SQL interactivo escrito en C, ahora disponible en tu navegador. Crea bases de datos, tablas, inserta y consulta registros.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                            <rect x="2" y="4" width="24" height="6" rx="3" fill="url(#g1)" opacity="0.9"/>
+                            <rect x="2" y="11" width="24" height="6" rx="3" fill="url(#g1)" opacity="0.7"/>
+                            <rect x="2" y="18" width="24" height="6" rx="3" fill="url(#g1)" opacity="0.5"/>
+                            <circle cx="7" cy="7" r="1.5" fill="#fff"/>
+                            <circle cx="7" cy="14" r="1.5" fill="#fff"/>
+                            <circle cx="7" cy="21" r="1.5" fill="#fff"/>
+                            <defs><linearGradient id="g1" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+                        </svg>
+                    </div>
+                    <div class="logo-text">
+                        <h1>manGUI</h1>
+                        <span class="version-badge">v1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    Base de datos
+                </div>
+                <div id="db-info" class="db-info">
+                    <div class="db-badge no-db">
+                        <span class="db-dot"></span>
+                        Sin conexión
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    Tablas
+                </div>
+                <div id="tables-list" class="tables-list">
+                    <div class="empty-state">Ninguna tabla creada</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    Transacción
+                </div>
+                <div id="txn-status" class="txn-status">
+                    <div class="txn-badge inactive">
+                        <span class="txn-dot"></span>
+                        Inactiva
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section sidebar-help">
+                <div class="section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Referencia rápida
+                </div>
+                <div class="help-commands">
+                    <div class="help-cmd" data-cmd="crt db ejemplo;">
+                        <code>crt db &lt;nombre&gt;;</code>
+                        <span>Crear BD</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="us ejemplo;">
+                        <code>us &lt;nombre&gt;;</code>
+                        <span>Usar BD</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="crt tbl usuarios (id:int, nombre:varchar);">
+                        <code>crt tbl &lt;t&gt; (col:tipo);</code>
+                        <span>Crear tabla</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="ag en usuarios vals (1, Alex);">
+                        <code>ag en &lt;t&gt; vals (...);</code>
+                        <span>Insertar</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="sel de usuarios;">
+                        <code>sel de &lt;t&gt;;</code>
+                        <span>Consultar</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="act en usuarios poner nombre = Pedro donde id = 1;">
+                        <code>act en &lt;t&gt; poner ...;</code>
+                        <span>Actualizar</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="bor de usuarios donde id = 1;">
+                        <code>bor de &lt;t&gt; donde ...;</code>
+                        <span>Eliminar</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="elm tbl usuarios;">
+                        <code>elm tbl &lt;t&gt;;</code>
+                        <span>Drop tabla</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="inictran;">
+                        <code>inictran;</code>
+                        <span>Begin</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="conftran;">
+                        <code>conftran;</code>
+                        <span>Commit</span>
+                    </div>
+                    <div class="help-cmd" data-cmd="canctran;">
+                        <code>canctran;</code>
+                        <span>Rollback</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="top-bar-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                    Terminal SQL
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn-icon" id="btn-clear" title="Limpiar terminal">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                    <button class="btn-icon" id="btn-export" title="Exportar datos">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <button class="btn-icon" id="btn-import" title="Importar datos">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </button>
+                    <input type="file" id="import-file" accept=".json" style="display:none">
+                </div>
+            </header>
+
+            <!-- Terminal -->
+            <div class="terminal-wrapper">
+                <div class="terminal" id="terminal">
+                    <div class="terminal-output" id="terminal-output">
+                        <div class="output-line welcome">
+                            <pre class="ascii-art">
+ ┌─────────────────────────────────────────────────┐
+ │               ____  _   _ ___                   │
+ │  _ __ ___   __ _ _ __ / ___|  | | |_ _|          │
+ │ | '_ ` _ \ / _` | '_ \ |  _| | | || |           │
+ │ | | | | | | (_| | | | | |_| | |_| || |           │
+ │ |_| |_| |_|\__,_|_| |_|\____|\___/|___|          │
+ │                                                 │
+ │  Mini Motor de Base de Datos en C               │
+ │  Versión Web — Interfaz Interactiva             │
+ └─────────────────────────────────────────────────┘</pre>
+                        </div>
+                        <div class="output-line info">Tipos soportados: <span class="type-tag">int</span> <span class="type-tag">varchar</span> <span class="type-tag">float</span></div>
+                        <div class="output-line info">Escribe un comando SQL o haz clic en la referencia rápida ←</div>
+                        <div class="output-line separator">─</div>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <div class="prompt" id="prompt">
+                        <span class="prompt-app">manGUI</span>
+                        <span class="prompt-db" id="prompt-db"></span>
+                        <span class="prompt-arrow">❯</span>
+                    </div>
+                    <input type="text" id="command-input" class="command-input" placeholder="Escribe un comando SQL..." autocomplete="off" spellcheck="false" autofocus>
+                    <button class="btn-run" id="btn-run" title="Ejecutar (Enter)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

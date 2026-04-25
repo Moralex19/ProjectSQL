@@ -20,6 +20,7 @@
 #define MAX_VALUE_LEN 128
 #define MAX_VALUES 32
 #define MAX_PATH_LEN 256
+#define MAX_TYPE_LEN 16
 
 typedef enum {
     CMD_UNKNOWN = 0,
@@ -37,6 +38,13 @@ typedef enum {
     CMD_USE_DB
 } CommandType;
 
+typedef enum {
+    TYPE_UNKNOWN = 0,
+    TYPE_INT,
+    TYPE_VARCHAR,
+    TYPE_FLOAT
+} DataType;
+
 typedef struct {
     int count;
     char tokens[MAX_TOKENS][MAX_TOKEN_LEN];
@@ -49,6 +57,7 @@ typedef struct {
 
     int column_count;
     char columns[MAX_COLUMNS][MAX_NAME_LEN];
+    char column_types[MAX_COLUMNS][MAX_TYPE_LEN];
 
     int value_count;
     char values[MAX_VALUES][MAX_VALUE_LEN];

@@ -21,7 +21,29 @@ static void init_command(ParsedCommand *cmd) {
     cmd->type = CMD_UNKNOWN;
 }
 
-static int parse_parenthesized_list(const TokenList *tokens, int start, char output[][MAX_NAME_LEN], int *count) {
+/* Verifica que el último token sea ";" */
+static int has_semicolon(const TokenList *tokens) {
+    if (tokens->count < 1) return 0;
+    return strcmp(tokens->tokens[tokens->count - 1], ";") == 0;
+}
+
+/* Valida si un string es un tipo de dato soportado */
+static int is_valid_type(const char *type) {
+    if (strcmp(type, "int") == 0)     return 1;
+    if (strcmp(type, "varchar") == 0) return 1;
+    if (strcmp(type, "float") == 0)   return 1;
+    return 0;
+}
+
+/*
+ * Parsea una lista tipo (col1:int, col2:varchar, col3:float)
+ * Separa nombre y tipo por el carácter ':'
+ * Retorna el índice del ')' o -1 en error
+ */
+static int parse_column_definitions(const TokenList *tokens, int start,
+                                    char names[][MAX_NAME_LEN],
+                                    char types[][MAX_TYPE_LEN],
+                                    int *count) {
     int i = start;
     *count = 0;
 
@@ -31,11 +53,39 @@ static int parse_parenthesized_list(const TokenList *tokens, int start, char out
     i++;
 
     while (i < tokens->count && strcmp(tokens->tokens[i], ")") != 0) {
-        if (strcmp(tokens->tokens[i], ",") != 0) {
-            strncpy(output[*count], tokens->tokens[i], MAX_NAME_LEN - 1);
-            output[*count][MAX_NAME_LEN - 1] = '\0';
-            (*count)++;
+        if (strcmp(tokens->tokens[i], ",") == 0) {
+            i++;
+            continue;
         }
+
+        /* El token debe tener formato "nombre:tipo" */
+        const char *tok = tokens->tokens[i];
+        const char *colon = strchr(tok, ':');
+
+        if (colon == NULL) {
+            printf("Error: columna '%s' sin tipo de dato. Use formato nombre:tipo (ej: id:int)\n", tok);
+            return -1;
+        }
+
+        int name_len = (int)(colon - tok);
+        if (name_len <= 0 || name_len >= MAX_NAME_LEN) {
+            printf("Error: nombre de columna inválido en '%s'.\n", tok);
+            return -1;
+        }
+
+        strncpy(names[*count], tok, name_len);
+        names[*count][name_len] = '\0';
+
+        const char *type_str = colon + 1;
+        if (!is_valid_type(type_str)) {
+            printf("Error: tipo de dato '%s' no soportado. Use: int, varchar, float\n", type_str);
+            return -1;
+        }
+
+        strncpy(types[*count], type_str, MAX_TYPE_LEN - 1);
+        types[*count][MAX_TYPE_LEN - 1] = '\0';
+
+        (*count)++;
         i++;
     }
 
@@ -84,28 +134,42 @@ int parse_command(const TokenList *tokens, ParsedCommand *cmd) {
         case CMD_CREATE:
             if (tokens->count < 3) return 0;
 
-            /* crt db <nombre> */
+            /* crt db <nombre>; */
             if (strcmp(tokens->tokens[1], KW_DB) == 0) {
+                if (!has_semicolon(tokens)) {
+                    printf("Error: falta ';' al final del comando.\n");
+                    return 0;
+                }
                 cmd->type = CMD_CREATE_DB;
                 strncpy(cmd->db_name, tokens->tokens[2], MAX_NAME_LEN - 1);
                 cmd->db_name[MAX_NAME_LEN - 1] = '\0';
                 return 1;
             }
 
-            /* crt tbl <nombre> (columnas) */
+            /* crt tbl <nombre> (col1:tipo, col2:tipo); */
             if (tokens->count < 5) return 0;
             if (strcmp(tokens->tokens[1], KW_TABLE) != 0) return 0;
+
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
 
             strncpy(cmd->table, tokens->tokens[2], MAX_NAME_LEN - 1);
             cmd->table[MAX_NAME_LEN - 1] = '\0';
 
-            i = parse_parenthesized_list(tokens, 3, cmd->columns, &cmd->column_count);
+            i = parse_column_definitions(tokens, 3, cmd->columns, cmd->column_types, &cmd->column_count);
             if (i < 0) return 0;
             return 1;
 
         case CMD_INSERT:
             if (tokens->count < 6) return 0;
             if (strcmp(tokens->tokens[1], KW_INTO) != 0) return 0;
+
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
 
             strncpy(cmd->table, tokens->tokens[2], MAX_NAME_LEN - 1);
             cmd->table[MAX_NAME_LEN - 1] = '\0';
@@ -120,20 +184,34 @@ int parse_command(const TokenList *tokens, ParsedCommand *cmd) {
             if (tokens->count < 3) return 0;
             if (strcmp(tokens->tokens[1], KW_FROM) != 0) return 0;
 
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
+
             strncpy(cmd->table, tokens->tokens[2], MAX_NAME_LEN - 1);
             cmd->table[MAX_NAME_LEN - 1] = '\0';
 
-            if (tokens->count > 3) {
-                if (tokens->count != 7) return 0;
+            /* sel de tabla; => 4 tokens (sel, de, tabla, ;) */
+            /* sel de tabla donde col = val; => 8 tokens */
+            if (tokens->count > 4) {
+                if (tokens->count != 8) return 0;
                 if (strcmp(tokens->tokens[3], KW_WHERE) != 0) return 0;
                 strncpy(cmd->where_column, tokens->tokens[4], MAX_NAME_LEN - 1);
                 strncpy(cmd->where_value, tokens->tokens[6], MAX_VALUE_LEN - 1);
+                cmd->has_where = 1;
             }
             return 1;
 
         case CMD_UPDATE:
-            if (tokens->count < 10) return 0;
+            /* act en tabla poner col = val donde col = val; => 11 tokens */
+            if (tokens->count < 11) return 0;
             if (strcmp(tokens->tokens[1], KW_INTO) != 0) return 0;
+
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
 
             strncpy(cmd->table, tokens->tokens[2], MAX_NAME_LEN - 1);
             cmd->table[MAX_NAME_LEN - 1] = '\0';
@@ -142,16 +220,24 @@ int parse_command(const TokenList *tokens, ParsedCommand *cmd) {
 
             strncpy(cmd->set_column, tokens->tokens[4], MAX_NAME_LEN - 1);
             strncpy(cmd->set_value, tokens->tokens[6], MAX_VALUE_LEN - 1);
+            cmd->has_set = 1;
 
             if (strcmp(tokens->tokens[7], KW_WHERE) != 0) return 0;
 
             strncpy(cmd->where_column, tokens->tokens[8], MAX_NAME_LEN - 1);
             strncpy(cmd->where_value, tokens->tokens[10], MAX_VALUE_LEN - 1);
+            cmd->has_where = 1;
             return 1;
 
         case CMD_DELETE:
-            if (tokens->count < 7) return 0;
+            /* bor de tabla donde col = val; => 8 tokens */
+            if (tokens->count < 8) return 0;
             if (strcmp(tokens->tokens[1], KW_FROM) != 0) return 0;
+
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
 
             strncpy(cmd->table, tokens->tokens[2], MAX_NAME_LEN - 1);
             cmd->table[MAX_NAME_LEN - 1] = '\0';
@@ -160,11 +246,18 @@ int parse_command(const TokenList *tokens, ParsedCommand *cmd) {
 
             strncpy(cmd->where_column, tokens->tokens[4], MAX_NAME_LEN - 1);
             strncpy(cmd->where_value, tokens->tokens[6], MAX_VALUE_LEN - 1);
+            cmd->has_where = 1;
             return 1;
 
         case CMD_DROP:
-            if (tokens->count < 3) return 0;
+            /* elm tbl tabla; => 4 tokens */
+            if (tokens->count < 4) return 0;
             if (strcmp(tokens->tokens[1], KW_TABLE) != 0) return 0;
+
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
 
             strncpy(cmd->table, tokens->tokens[2], MAX_NAME_LEN - 1);
             cmd->table[MAX_NAME_LEN - 1] = '\0';
@@ -173,11 +266,25 @@ int parse_command(const TokenList *tokens, ParsedCommand *cmd) {
         case CMD_BEGIN:
         case CMD_COMMIT:
         case CMD_ROLLBACK:
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
+            return 1;
+
         case CMD_EXIT:
+            /* 'salir' no requiere ';' */
             return 1;
 
         case CMD_USE_DB:
-            if (tokens->count < 2) return 0;
+            /* us nombre; => 3 tokens */
+            if (tokens->count < 3) return 0;
+
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
+
             strncpy(cmd->db_name, tokens->tokens[1], MAX_NAME_LEN - 1);
             cmd->db_name[MAX_NAME_LEN - 1] = '\0';
             return 1;

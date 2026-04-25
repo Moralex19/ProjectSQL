@@ -11,7 +11,7 @@ static void handle_sigint(int sig) {
         transaction_rollback();
     }
     printf("Saliendo de forma segura...\n");
-    g_running = 0;
+    _exit(0);
 }
 
 void setup_signal_handlers(void) {

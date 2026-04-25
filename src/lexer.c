@@ -12,7 +12,7 @@ void tokenize_input(const char *input, TokenList *tokens) {
 
         if (i >= len) break;
 
-        if (strchr("(),=", input[i]) != NULL) {
+        if (strchr("(),=;", input[i]) != NULL) {
             if (tokens->count < MAX_TOKENS) {
                 tokens->tokens[tokens->count][0] = input[i];
                 tokens->tokens[tokens->count][1] = '\0';
@@ -27,7 +27,7 @@ void tokenize_input(const char *input, TokenList *tokens) {
 
         while (i < len &&
                !isspace((unsigned char)input[i]) &&
-               strchr("(),=", input[i]) == NULL) {
+               strchr("(),=;", input[i]) == NULL) {
             if (j < MAX_TOKEN_LEN - 1) {
                 temp[j++] = input[i];
             }

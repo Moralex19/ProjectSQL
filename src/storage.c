@@ -71,13 +71,101 @@ int read_table_columns(const char *table_name, char columns[][MAX_NAME_LEN], int
     *count = 0;
     char *token = strtok(line, "|\n\r");
     while (token && *count < MAX_COLUMNS) {
-        strncpy(columns[*count], token, MAX_NAME_LEN - 1);
-        columns[*count][MAX_NAME_LEN - 1] = '\0';
+        /* El formato en .meta es "nombre:tipo", extraemos solo el nombre */
+        char *colon = strchr(token, ':');
+        if (colon) {
+            int name_len = (int)(colon - token);
+            if (name_len >= MAX_NAME_LEN) name_len = MAX_NAME_LEN - 1;
+            strncpy(columns[*count], token, name_len);
+            columns[*count][name_len] = '\0';
+        } else {
+            /* Compatibilidad con tablas antiguas sin tipo */
+            strncpy(columns[*count], token, MAX_NAME_LEN - 1);
+            columns[*count][MAX_NAME_LEN - 1] = '\0';
+        }
         (*count)++;
         token = strtok(NULL, "|\n\r");
     }
 
     return (*count > 0);
+}
+
+int read_table_meta(const char *table_name, char columns[][MAX_NAME_LEN], char types[][MAX_TYPE_LEN], int *count) {
+    char meta_path[MAX_PATH_LEN];
+    build_meta_path(table_name, meta_path);
+
+    FILE *fp = fopen(meta_path, "r");
+    if (!fp) return 0;
+
+    char line[MAX_LINE];
+    if (!fgets(line, sizeof(line), fp)) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+
+    *count = 0;
+    char *token = strtok(line, "|\n\r");
+    while (token && *count < MAX_COLUMNS) {
+        char *colon = strchr(token, ':');
+        if (colon) {
+            int name_len = (int)(colon - token);
+            if (name_len >= MAX_NAME_LEN) name_len = MAX_NAME_LEN - 1;
+            strncpy(columns[*count], token, name_len);
+            columns[*count][name_len] = '\0';
+
+            strncpy(types[*count], colon + 1, MAX_TYPE_LEN - 1);
+            types[*count][MAX_TYPE_LEN - 1] = '\0';
+        } else {
+            /* Compatibilidad con tablas antiguas sin tipo */
+            strncpy(columns[*count], token, MAX_NAME_LEN - 1);
+            columns[*count][MAX_NAME_LEN - 1] = '\0';
+            strncpy(types[*count], "varchar", MAX_TYPE_LEN - 1);
+            types[*count][MAX_TYPE_LEN - 1] = '\0';
+        }
+        (*count)++;
+        token = strtok(NULL, "|\n\r");
+    }
+
+    return (*count > 0);
+}
+
+/* Valida si un valor es compatible con el tipo declarado */
+static int validate_value_type(const char *value, const char *type) {
+    if (strcmp(type, "int") == 0) {
+        /* Verificar que todos los caracteres sean dígitos (opcionalmente con signo) */
+        int start = 0;
+        if (value[0] == '-' || value[0] == '+') start = 1;
+        if (value[start] == '\0') return 0;  /* Solo el signo, sin dígitos */
+        for (int i = start; value[i] != '\0'; i++) {
+            if (!isdigit((unsigned char)value[i])) return 0;
+        }
+        return 1;
+    }
+
+    if (strcmp(type, "float") == 0) {
+        int start = 0;
+        int has_dot = 0;
+        if (value[0] == '-' || value[0] == '+') start = 1;
+        if (value[start] == '\0') return 0;
+        for (int i = start; value[i] != '\0'; i++) {
+            if (value[i] == '.') {
+                if (has_dot) return 0;  /* Más de un punto */
+                has_dot = 1;
+            } else if (!isdigit((unsigned char)value[i])) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+
+    if (strcmp(type, "varchar") == 0) {
+        /* varchar acepta cualquier texto */
+        return 1;
+    }
+
+    /* Tipo desconocido, aceptar por compatibilidad */
+    return 1;
 }
 
 int create_table(const ParsedCommand *cmd) {
@@ -97,8 +185,13 @@ int create_table(const ParsedCommand *cmd) {
         return 0;
     }
 
+    /* Guardar formato nombre:tipo|nombre:tipo */
     for (int i = 0; i < cmd->column_count; i++) {
-        fprintf(meta, "%s", cmd->columns[i]);
+        if (cmd->column_types[i][0] != '\0') {
+            fprintf(meta, "%s:%s", cmd->columns[i], cmd->column_types[i]);
+        } else {
+            fprintf(meta, "%s:varchar", cmd->columns[i]);
+        }
         if (i < cmd->column_count - 1) fprintf(meta, "|");
     }
     fprintf(meta, "\n");
@@ -112,6 +205,13 @@ int create_table(const ParsedCommand *cmd) {
     fclose(data);
 
     printf("Tabla '%s' creada correctamente.\n", cmd->table);
+
+    /* Mostrar esquema */
+    printf("  Columnas:\n");
+    for (int i = 0; i < cmd->column_count; i++) {
+        printf("    - %s (%s)\n", cmd->columns[i],
+               cmd->column_types[i][0] ? cmd->column_types[i] : "varchar");
+    }
     return 1;
 }
 
@@ -144,9 +244,10 @@ int insert_record(const ParsedCommand *cmd) {
     }
 
     char columns[MAX_COLUMNS][MAX_NAME_LEN];
+    char types[MAX_COLUMNS][MAX_TYPE_LEN];
     int column_count = 0;
 
-    if (!read_table_columns(cmd->table, columns, &column_count)) {
+    if (!read_table_meta(cmd->table, columns, types, &column_count)) {
         printf("No se pudieron leer las columnas.\n");
         return 0;
     }
@@ -155,6 +256,15 @@ int insert_record(const ParsedCommand *cmd) {
         printf("Cantidad de valores incorrecta. Esperados: %d, recibidos: %d\n",
                column_count, cmd->value_count);
         return 0;
+    }
+
+    /* Validar tipos de datos */
+    for (int i = 0; i < cmd->value_count; i++) {
+        if (!validate_value_type(cmd->values[i], types[i])) {
+            printf("Error de tipo: columna '%s' es de tipo '%s', pero se recibió '%s'.\n",
+                   columns[i], types[i], cmd->values[i]);
+            return 0;
+        }
     }
 
     if (transaction_is_active()) {
@@ -270,9 +380,10 @@ int update_records(const ParsedCommand *cmd) {
     }
 
     char columns[MAX_COLUMNS][MAX_NAME_LEN];
+    char types[MAX_COLUMNS][MAX_TYPE_LEN];
     int column_count = 0;
 
-    if (!read_table_columns(cmd->table, columns, &column_count)) {
+    if (!read_table_meta(cmd->table, columns, types, &column_count)) {
         printf("No se pudieron leer las columnas.\n");
         return 0;
     }
@@ -286,6 +397,13 @@ int update_records(const ParsedCommand *cmd) {
     }
     if (where_index < 0) {
         printf("La columna WHERE '%s' no existe.\n", cmd->where_column);
+        return 0;
+    }
+
+    /* Validar que el nuevo valor sea compatible con el tipo de la columna SET */
+    if (!validate_value_type(cmd->set_value, types[set_index])) {
+        printf("Error de tipo: columna '%s' es de tipo '%s', pero se intenta poner '%s'.\n",
+               cmd->set_column, types[set_index], cmd->set_value);
         return 0;
     }
 

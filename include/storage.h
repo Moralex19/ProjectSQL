@@ -14,6 +14,7 @@ int update_records(const ParsedCommand *cmd);
 int delete_records(const ParsedCommand *cmd);
 
 int read_table_columns(const char *table_name, char columns[][MAX_NAME_LEN], int *count);
+int read_table_meta(const char *table_name, char columns[][MAX_NAME_LEN], char types[][MAX_TYPE_LEN], int *count);
 
 int create_database(const char *db_name);
 int use_database(const char *db_name);
