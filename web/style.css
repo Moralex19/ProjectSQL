@@ -760,49 +760,276 @@ body {
     transform: scale(0.95);
 }
 
-/* ── Responsive ── */
+/* ── Result table horizontal scroll on small screens ── */
+.result-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ══════════════════════════════════════════
+   TABLET — max-width: 1024px
+   ══════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 240px;
+    }
+
+    .help-cmd code {
+        font-size: 10px;
+    }
+
+    .help-cmd span {
+        font-size: 9px;
+    }
+
+    .ascii-art {
+        font-size: 10px;
+    }
+}
+
+/* ══════════════════════════════════════════
+   MOBILE — max-width: 768px
+   Sidebar becomes a full-height overlay
+   ══════════════════════════════════════════ */
 @media (max-width: 768px) {
+    :root {
+        --sidebar-width: 280px;
+    }
+
+    /* Sidebar drawer */
     .sidebar {
         position: fixed;
         left: 0;
         top: 0;
         bottom: 0;
         z-index: 100;
-        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+        box-shadow: 4px 0 32px rgba(0, 0, 0, 0.6);
+        transform: translateX(0);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .sidebar.collapsed {
-        margin-left: calc(var(--sidebar-width) * -1);
+        transform: translateX(-100%);
+        margin-left: 0;
+    }
+
+    /* Terminal */
+    .terminal {
+        padding: 12px 14px;
+    }
+
+    .output-line {
+        font-size: 12px;
+        line-height: 1.6;
     }
 
     .ascii-art {
         font-size: 8px;
+        line-height: 1.3;
+        overflow-x: auto;
+        white-space: pre;
+    }
+
+    /* Input area */
+    .input-area {
+        padding: 8px 12px;
+        gap: 6px;
     }
 
     .prompt {
         font-size: 11px;
     }
 
+    .prompt-app {
+        display: inline;
+    }
+
     .command-input {
+        font-size: 14px;  /* avoid iOS zoom on focus */
+        padding: 10px 12px;
+    }
+
+    /* Tables */
+    .result-table th,
+    .result-table td {
+        padding: 6px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    /* Top bar */
+    .top-bar {
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    .top-bar-title {
         font-size: 12px;
     }
 
-    .output-line {
-        font-size: 11px;
+    /* Sidebar sections */
+    .sidebar-section {
+        padding: 12px 14px;
+    }
+
+    .sidebar-header {
+        padding: 14px;
+    }
+
+    .tables-list {
+        max-height: 160px;
     }
 }
 
+/* ══════════════════════════════════════════
+   SMALL MOBILE — max-width: 480px
+   Further compaction
+   ══════════════════════════════════════════ */
 @media (max-width: 480px) {
+    /* Hide title to give more room */
     .top-bar-title {
         display: none;
     }
 
     .input-area {
-        padding: 8px 10px;
+        padding: 8px;
+        gap: 4px;
     }
 
     .terminal {
         padding: 10px;
+    }
+
+    /* Prompt: shorten app name on tiny screens */
+    .prompt-app {
+        font-size: 10px;
+    }
+
+    .prompt-arrow {
+        font-size: 13px;
+    }
+
+    .command-input {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+
+    .btn-run {
+        width: 34px;
+        height: 34px;
+    }
+
+    .ascii-art {
+        font-size: 6.5px;
+    }
+
+    .output-line {
+        font-size: 11px;
+    }
+
+    .result-table th,
+    .result-table td {
+        padding: 5px 8px;
+        font-size: 10px;
+    }
+
+    /* Sidebar a bit narrower */
+    :root {
+        --sidebar-width: 260px;
+    }
+
+    .help-cmd {
+        padding: 4px 6px;
+    }
+
+    .help-cmd code {
+        font-size: 10px;
+    }
+}
+
+/* ══════════════════════════════════════════
+   VERY SMALL — max-width: 360px
+   Ultra-narrow phones
+   ══════════════════════════════════════════ */
+@media (max-width: 360px) {
+    :root {
+        --sidebar-width: 240px;
+    }
+
+    .logo-text h1 {
+        font-size: 16px;
+    }
+
+    .prompt-db-name {
+        font-size: 10px;
+    }
+
+    .ascii-art {
+        font-size: 5.5px;
+    }
+
+    .top-bar {
+        padding: 0 8px;
+    }
+
+    .btn-icon {
+        padding: 4px;
+    }
+}
+
+/* ══════════════════════════════════════════
+   LANDSCAPE MOBILE — short viewport
+   ══════════════════════════════════════════ */
+@media (max-height: 500px) {
+    .sidebar-header {
+        padding: 10px 14px;
+    }
+
+    .sidebar-section {
+        padding: 8px 14px;
+    }
+
+    .section-title {
+        margin-bottom: 6px;
+    }
+
+    .ascii-art {
+        display: none;
+    }
+
+    .terminal {
+        padding: 8px 12px;
+    }
+
+    .input-area {
+        padding: 6px 10px;
+    }
+
+    :root {
+        --topbar-height: 40px;
+    }
+}
+
+/* ══════════════════════════════════════════
+   LARGE DESKTOP — min-width: 1400px
+   More breathing room
+   ══════════════════════════════════════════ */
+@media (min-width: 1400px) {
+    :root {
+        --sidebar-width: 310px;
+    }
+
+    .terminal {
+        padding: 20px 28px;
+    }
+
+    .output-line {
+        font-size: 14px;
+    }
+
+    .command-input {
+        font-size: 14px;
+        padding: 12px 16px;
     }
 }
 

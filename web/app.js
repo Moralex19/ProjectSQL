@@ -21,6 +21,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const helpCmds = document.querySelectorAll('.help-cmd');
 
+    /* ── Mobile Overlay — created dynamically ── */
+    const overlay = document.createElement('div');
+    overlay.id = 'mobile-overlay';
+    overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 98;
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+        display: none; opacity: 0;
+        transition: opacity 0.3s ease;
+    `;
+    document.body.appendChild(overlay);
+
+    /* ── Responsive helpers ── */
+    function isMobile() {
+        return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    function showOverlay() {
+        overlay.style.display = 'block';
+        // Force reflow before applying opacity for transition
+        overlay.offsetHeight;
+        overlay.style.opacity = '1';
+    }
+
+    function hideOverlay() {
+        overlay.style.opacity = '0';
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+
+    function openSidebar() {
+        sidebar.classList.remove('collapsed');
+        if (isMobile()) showOverlay();
+    }
+
+    function closeSidebar() {
+        sidebar.classList.add('collapsed');
+        hideOverlay();
+    }
+
+    overlay.addEventListener('click', () => {
+        closeSidebar();
+    });
+
     let commandHistory = [];
     let historyIndex = -1;
 
@@ -221,14 +264,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
+        if (sidebar.classList.contains('collapsed')) {
+            openSidebar();
+        } else {
+            closeSidebar();
+        }
     });
 
-    // Help commands — click to paste
+    // Help commands — click to paste (and close sidebar on mobile)
     helpCmds.forEach(el => {
         el.addEventListener('click', () => {
             commandInput.value = el.dataset.cmd;
             commandInput.focus();
+            if (isMobile()) closeSidebar();
         });
     });
 
@@ -236,6 +284,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('terminal').addEventListener('click', (e) => {
         if (e.target === e.currentTarget || e.target.closest('.terminal-output')) {
             commandInput.focus();
+        }
+    });
+
+    // Collapse sidebar on mobile at startup
+    if (isMobile()) {
+        sidebar.classList.add('collapsed');
+    }
+
+    // Handle resize: auto-collapse on mobile, auto-expand on desktop
+    let wasMobile = isMobile();
+    window.addEventListener('resize', () => {
+        const nowMobile = isMobile();
+        if (nowMobile !== wasMobile) {
+            if (nowMobile) {
+                sidebar.classList.add('collapsed');
+                hideOverlay();
+            } else {
+                sidebar.classList.remove('collapsed');
+                hideOverlay();
+            }
+            wasMobile = nowMobile;
         }
     });
 
