@@ -38,24 +38,33 @@ static void build_backup_data_path(const char *table, char *out) {
     snprintf(out, MAX_PATH_LEN, "%s/.tmp/%s.data.bak", base, table);
 }
 
+/*
+ * copy_file() — Copia un archivo usando llamadas al sistema
+ *
+ * Llamadas al sistema usadas:
+ *   - open()  : abre archivo fuente (lectura) y destino (escritura)
+ *   - read()  : lee bloques de bytes del archivo fuente
+ *   - write() : escribe bloques de bytes al archivo destino
+ *   - close() : cierra los descriptores de archivo
+ */
 static int copy_file(const char *src, const char *dst) {
-    FILE *in = fopen(src, "rb");
-    if (!in) return 0;
+    int in_fd = open(src, O_RDONLY);
+    if (in_fd == -1) return 0;
 
-    FILE *out = fopen(dst, "wb");
-    if (!out) {
-        fclose(in);
+    int out_fd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (out_fd == -1) {
+        close(in_fd);
         return 0;
     }
 
     char buffer[1024];
-    size_t n;
-    while ((n = fread(buffer, 1, sizeof(buffer), in)) > 0) {
-        fwrite(buffer, 1, n, out);
+    ssize_t n;
+    while ((n = read(in_fd, buffer, sizeof(buffer))) > 0) {
+        write(out_fd, buffer, n);
     }
 
-    fclose(in);
-    fclose(out);
+    close(in_fd);
+    close(out_fd);
     return 1;
 }
 

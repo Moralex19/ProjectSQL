@@ -13,6 +13,7 @@ static CommandType get_command_type(const char *token) {
     if (strcmp(token, KW_ROLLBACK) == 0) return CMD_ROLLBACK;
     if (strcmp(token, KW_EXIT) == 0)     return CMD_EXIT;
     if (strcmp(token, KW_USE) == 0)      return CMD_USE_DB;
+    if (strcmp(token, KW_SHOW) == 0)     return CMD_SHOW_DBS;  /* default, refined below */
     return CMD_UNKNOWN;
 }
 
@@ -291,6 +292,31 @@ int parse_command(const TokenList *tokens, ParsedCommand *cmd) {
 
         case CMD_CREATE_DB:
             /* Already handled inside CMD_CREATE */
+            return 0;
+
+        case CMD_SHOW_DBS:
+            /* mos db; => show databases  |  mos tbl; => show tables */
+            if (tokens->count < 3) return 0;
+
+            if (!has_semicolon(tokens)) {
+                printf("Error: falta ';' al final del comando.\n");
+                return 0;
+            }
+
+            if (strcmp(tokens->tokens[1], KW_DB) == 0) {
+                cmd->type = CMD_SHOW_DBS;
+                return 1;
+            }
+            if (strcmp(tokens->tokens[1], KW_TABLE) == 0) {
+                cmd->type = CMD_SHOW_TABLES;
+                return 1;
+            }
+
+            printf("Error: use 'mos db;' o 'mos tbl;'\n");
+            return 0;
+
+        case CMD_SHOW_TABLES:
+            /* Already handled inside CMD_SHOW_DBS */
             return 0;
 
         default:

@@ -19,5 +19,7 @@ int read_table_meta(const char *table_name, char columns[][MAX_NAME_LEN], char t
 int create_database(const char *db_name);
 int use_database(const char *db_name);
 const char *get_current_db(void);
+int show_databases(void);
+int show_tables(void);
 
 #endif

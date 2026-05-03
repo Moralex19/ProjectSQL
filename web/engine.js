@@ -11,7 +11,7 @@ const KW = {
     VALUES: 'vals', SELECT: 'sel', FROM: 'de', UPDATE: 'act',
     SET: 'poner', WHERE: 'donde', DELETE: 'bor', DROP: 'elm',
     BEGIN: 'inictran', COMMIT: 'conftran', ROLLBACK: 'canctran',
-    EXIT: 'salir', DB: 'db', USE: 'us'
+    EXIT: 'salir', DB: 'db', USE: 'us', SHOW: 'mos'
 };
 
 const VALID_TYPES = ['int', 'varchar', 'float'];
@@ -174,6 +174,7 @@ class SQLEngine {
                 case KW.COMMIT:   this._parseCommit(tokens, results); break;
                 case KW.ROLLBACK: this._parseRollback(tokens, results); break;
                 case KW.USE:      this._parseUse(tokens, results); break;
+                case KW.SHOW:     this._parseShow(tokens, results); break;
                 case KW.EXIT:     results.push({ type: 'info', text: '👋 ¡Hasta luego! (Recarga la página para reiniciar)' }); break;
                 default:
                     results.push({ type: 'error', text: `Comando desconocido: '${cmd}'` });
@@ -464,6 +465,53 @@ class SQLEngine {
         this.storage.currentDb = name;
         this.storage._save();
         results.push({ type: 'success', text: `Usando base de datos '${name}'.` });
+    }
+
+    /* ── SHOW (mos db; | mos tbl;) ── */
+    _parseShow(tokens, results) {
+        this._requireSemicolon(tokens);
+        if (tokens.length < 3) throw new Error("Sintaxis: mos db; | mos tbl;");
+
+        const target = tokens[1];
+
+        if (target === KW.DB) {
+            // Show all databases
+            const dbNames = Object.keys(this.storage.databases);
+            if (dbNames.length === 0) {
+                results.push({ type: 'info', text: 'No hay bases de datos creadas.' });
+                return;
+            }
+            const headers = ['Base de datos', 'Tablas', 'Estado'];
+            const rows = dbNames.map(name => {
+                const db = this.storage.databases[name];
+                const tableCount = Object.keys(db.tables).length;
+                const status = (name === this.storage.currentDb) ? '✔ actual' : '';
+                return [name, String(tableCount), status];
+            });
+            results.push({ type: 'table', headers, rows, count: rows.length });
+            return;
+        }
+
+        if (target === KW.TABLE) {
+            // Show all tables in current database
+            this._requireDb();
+            const db = this.storage._getDb();
+            const tableNames = Object.keys(db.tables);
+            if (tableNames.length === 0) {
+                results.push({ type: 'info', text: `No hay tablas en '${this.storage.currentDb}'.` });
+                return;
+            }
+            const headers = ['Tabla', 'Columnas', 'Registros'];
+            const rows = tableNames.map(name => {
+                const t = db.tables[name];
+                const colDesc = t.columns.map(c => `${c.name}:${c.type}`).join(', ');
+                return [name, colDesc, String(t.rows.length)];
+            });
+            results.push({ type: 'table', headers, rows, count: rows.length });
+            return;
+        }
+
+        throw new Error("Sintaxis: mos db; | mos tbl;");
     }
 }
 

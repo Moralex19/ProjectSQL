@@ -6,6 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -35,7 +36,9 @@ typedef enum {
     CMD_ROLLBACK,
     CMD_EXIT,
     CMD_CREATE_DB,
-    CMD_USE_DB
+    CMD_USE_DB,
+    CMD_SHOW_DBS,
+    CMD_SHOW_TABLES
 } CommandType;
 
 typedef enum {

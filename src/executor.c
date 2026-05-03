@@ -2,6 +2,7 @@
 #include "../include/storage.h"
 #include "../include/transaction.h"
 #include "../include/process.h"
+#include "../include/signals.h"
 
 int execute_command(const ParsedCommand *cmd) {
     switch (cmd->type) {
@@ -34,14 +35,22 @@ int execute_command(const ParsedCommand *cmd) {
             return transaction_rollback();
 
         case CMD_EXIT:
-            printf("Saliendo de ZacariasDB...\n");
-            return 2;
+            printf("Saliendo de manGUI...\n");
+            /* Interrupción por software: envía SIGUSR1 al proceso */
+            trigger_exit_interrupt();
+            return 2; /* Respaldo: no se alcanza por la interrupción */
 
         case CMD_CREATE_DB:
             return create_database(cmd->db_name);
 
         case CMD_USE_DB:
             return use_database(cmd->db_name);
+
+        case CMD_SHOW_DBS:
+            return show_databases();
+
+        case CMD_SHOW_TABLES:
+            return show_tables();
 
         default:
             printf("Comando no reconocido.\n");

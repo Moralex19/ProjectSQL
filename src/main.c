@@ -19,6 +19,8 @@ int main(void) {
     printf(" Mini motor de base de datos en C\n");
     printf(" 'crt db <nombre>' para crear BD\n");
     printf(" 'us <nombre>' para usar BD\n");
+    printf(" 'mos db' mostrar bases de datos\n");
+    printf(" 'mos tbl' mostrar tablas\n");
     printf(" 'salir' para terminar\n");
     printf("=====================================\n");
 

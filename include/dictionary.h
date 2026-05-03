@@ -19,5 +19,6 @@
 #define KW_EXIT        "salir"
 #define KW_DB          "db"
 #define KW_USE         "us"
+#define KW_SHOW        "mos"
 
 #endif
