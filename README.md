@@ -258,9 +258,9 @@ Registros encontrados: 3
 
 ### Resumen de transacciones
 
-| Comando      | Acción                                              |
-|--------------|-----------------------------------------------------|
-| `inictran;`  | Abre la transacción y crea un respaldo automático   |
+| Comando      | Acción                                               |
+|--------------|------------------------------------------------------|
+| `inictran;`  | Abre la transacción y crea un respaldo automático    |
 | `conftran;`  | Confirma los cambios y elimina el respaldo           |
 | `canctran;`  | Deshace todos los cambios y restaura el respaldo     |
 | `Ctrl+C`     | Si hay transacción activa, ejecuta rollback y cierra |
