@@ -36,9 +36,8 @@ int execute_command(const ParsedCommand *cmd) {
 
         case CMD_EXIT:
             printf("Saliendo de manGUI...\n");
-            /* Interrupción por software: envía SIGUSR1 al proceso */
             trigger_exit_interrupt();
-            return 2; /* Respaldo: no se alcanza por la interrupción */
+            return 2;
 
         case CMD_CREATE_DB:
             return create_database(cmd->db_name);
